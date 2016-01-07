@@ -60,24 +60,25 @@ dt.testing <-dt.testing[,-c(1:7)]
 ```
 
 **Remove near zero variables from the training dataset**
-```{r}
+```{r, warning=FALSE, message=FALSE}
 var.zero.training<-nearZeroVar(dt.training)
 dt.training<-dt.training[-var.zero.training]
 ```
 
 **Feature Selection to reduce the number of columns, using random forest**
-```{r}
+```{r, warning=FALSE, message=FALSE}
 model.rf.training <- train(classe ~ ., data=dt.training, method="rf")
 varI <- varImp(model.rf.training, scale=TRUE)
-```
-
-*List of first 14 features and plot*
-```{r}
-features<-rownames(varI$importance)[1:14]
 plot(varI)
 ```
 
-*Plot for variable accuracy*
+**List of first 14 features and plot**
+```{r}
+features<-rownames(varI$importance)[1:14]
+features
+```
+
+**Plot for variable accuracy**
 ```{r}
 plot(model.rf.training)
 ```
@@ -103,9 +104,10 @@ cm<-confusionMatrix(predictions, testing$classe)
 cm
 ```
 
-**Predicting the classe for testing dataset
+**Predicting the "classe" for testing dataset**
 ```{r}
 predict.final<- predict(model.rf, newdata=dt.testing)
+predict.final
 ```
 
 ##Producing the output file
@@ -118,6 +120,7 @@ pml_write_files = function(x){
           write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
      }
 }
+
 pml_write_files(predict.final)
 ```
 
