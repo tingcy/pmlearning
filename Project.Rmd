@@ -1,0 +1,133 @@
+---
+title: "Practical Machine Learning Project"
+author: "cy ting"
+date: "December 31, 2015"
+output: html_document
+---
+
+This document is prepared for the Coursera Module 8: Practical Machine Learning
+
+##**Background**
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+**Data**
+
+The training data can be acquired from [https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv]
+
+The test data can be acquired from [https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv]
+
+**Project Work**
+
+In this project, the reproducibility is controlled by setting the seed to **1234**.
+
+The outcome variable is classe, a factor variable with 5 levels. They are:
+
+- exactly according to the specification (Class A)
+- throwing the elbows to the front (Class B)
+- lifting the dumbbell only halfway (Class C)
+- lowering the dumbbell only halfway (Class D)
+- throwing the hips to the front (Class E)
+
+##**R Codes and Findings**
+
+**Packages, Libraries, Seed**
+
+```{r, warning=FALSE, message=FALSE}
+library(caret)
+library(data.table)
+
+set.seed(1234)
+```
+
+**Read original datasets - training and testing**
+```{r}
+dt.training<-read.csv('pml-training.csv')
+dt.testing<-read.csv('pml-testing.csv')
+```
+
+**Remove all columns that contain missing values**
+```{r}
+dt.training<-dt.training[,colSums(is.na(dt.training)) == 0]
+dt.testing<-dt.testing[,colSums(is.na(dt.testing)) == 0]
+dt.testing["problem_id"]<-NULL
+```
+
+**Remove the first 7 columns that are unless for data mining**
+```{r}
+dt.training <-dt.training[,-c(1:7)]
+dt.testing <-dt.testing[,-c(1:7)]
+```
+
+**Remove near zero variables from the training dataset**
+```{r}
+var.zero.training<-nearZeroVar(dt.training)
+dt.training<-dt.training[-var.zero.training]
+```
+
+**Feature Selection to reduce the number of columns, using random forest**
+```{r}
+model.rf.training <- train(classe ~ ., data=dt.training, method="rf")
+varI <- varImp(model.rf.training, scale=TRUE)
+```
+
+*List of first 14 features and plot*
+```{r}
+features<-rownames(varI$importance)[1:14]
+plot(varI)
+```
+
+*Plot for variable accuracy*
+```{r}
+plot(model.rf.training)
+```
+
+##Preparing the training dataset after feature selection
+```{r}
+dt.training<-cbind(dt.training[,features],dt.training[,"classe"])
+names(dt.training)[15]<-"classe"
+```
+
+**create data partitions**
+```{r}
+inTrain <- createDataPartition(y=dt.training$classe, p=0.80, list=FALSE )
+training <- dt.training[inTrain, ]
+testing <- dt.training[-inTrain, ]
+```
+
+**Predictive model creation using random forest**
+```{r}
+model.rf <- train(classe ~ ., data=training, method="rf")
+predictions <- predict(model.rf, newdata=testing)
+cm<-confusionMatrix(predictions, testing$classe)
+cm
+```
+
+**Predicting the classe for testing dataset
+```{r}
+predict.final<- predict(model.rf, newdata=dt.testing)
+```
+
+##Producing the output file
+
+```{r}
+pml_write_files = function(x){
+     n = length(x)
+     for(i in 1:n){
+          filename = paste0("problem_id_",i,".txt")
+          write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+     }
+}
+pml_write_files(predict.final)
+```
+
+
+
+
+
+
+
+
+
+
+
